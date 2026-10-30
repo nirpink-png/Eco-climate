@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EcoClimate Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0fdf4', 500: '#22c55e', 600: '#16a34a' }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <style>
+    .glass {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-300 font-sans pb-28">
+
+  <!-- Header / Navigation Bar -->
+  <header class="sticky top-0 z-40 w-full glass border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2 cursor-pointer" onclick="getGPSLocation()">
+        <i class="fa-solid fa-leaf text-green-500 text-xl"></i>
+        <span class="font-bold text-lg tracking-tight">EcoClimate</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-slate-200/80 dark:bg-slate-800/80 text-xs font-semibold px-2 py-1.5 rounded-lg border-none focus:ring-2 focus:ring-green-500 outline-none">
+          <option value="en">English (EN)</option>
+          <option value="es">Español (ES)</option>
+          <option value="fr">Français (FR)</option>
+          <option value="hi">हिन्दी (HI)</option>
+        </select>
+        <button onclick="toggleModal('helpModal')" class="p-2 rounded-lg bg-slate-200/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition" title="Help & Info">
+          <i class="fa-solid fa-circle-question"></i>
+        </button>
+        <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-200/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
+
+    <!-- Interactive Search Bar -->
+    <section class="glass rounded-2xl p-2 flex items-center space-x-2 shadow-sm">
+      <div class="relative flex-1">
+        <input type="text" id="citySearchInput" placeholder="Search city (e.g., London, Delhi, Tokyo)..." 
+               onkeypress="handleSearchKeyPress(event)"
+               class="w-full bg-slate-100 dark:bg-slate-900 text-xs sm:text-sm px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 outline-none focus:ring-2 focus:ring-green-500 text-slate-800 dark:text-slate-100" />
+      </div>
+      <button onclick="searchCity()" class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+      <button onclick="getGPSLocation()" title="Use Current GPS Location" class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+        <i class="fa-solid fa-location-crosshairs"></i>
+      </button>
+    </section>
+
+    <!-- Location & Weather Card -->
+    <section class="glass rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400" id="txtLiveStatus">Live Status</span>
+        <button onclick="toggleUnit()" class="text-xs font-bold bg-slate-200/70 dark:bg-slate-800/80 px-2.5 py-1 rounded-full text-slate-700 dark:text-slate-300">
+          <span id="unitBtn">°C → °F</span>
+        </button>
+      </div>
+
+      <h1 class="text-2xl font-extrabold" id="locationTitle">Searching Location...</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400" id="weatherDesc">Fetching weather data...</p>
+      
+      <div class="my-4 flex items-center justify-center space-x-3">
+        <i id="weatherMainIcon" class="fa-solid fa-cloud-sun text-5xl text-amber-400"></i>
+        <span class="text-6xl font-light tracking-tighter" id="tempDisplay">--°</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-xs text-slate-600 dark:text-slate-400">
+        <div><i class="fa-solid fa-droplet text-blue-500 mr-1"></i><span id="txtHumidity">Humidity</span>: <strong id="valHumidity">--%</strong></div>
+        <div><i class="fa-solid fa-wind text-teal-500 mr-1"></i><span id="txtWind">Wind</span>: <strong id="valWind">-- km/h</strong></div>
+      </div>
+    </section>
+
+    <!-- Air Quality Index Widget -->
+    <section id="aqiSection" class="glass rounded-3xl p-5 shadow-lg transition-all duration-300">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-bold text-sm tracking-wide text-slate-700 dark:text-slate-200" id="txtAqiTitle">AIR QUALITY INDEX (AQI)</h2>
+        <span id="aqiBadge" class="text-xs font-bold px-3 py-1 rounded-full text-white bg-green-500">Loading</span>
+      </div>
+
+      <div class="flex items-baseline space-x-2 my-2">
+        <span class="text-4xl font-extrabold" id="aqiValue">--</span>
+        <span class="text-xs text-slate-500 dark:text-slate-400" id="txtAqiScale">/ 500 US AQI</span>
+      </div>
+
+      <div class="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden my-3">
+        <div id="aqiBar" class="bg-green-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+
+      <p id="aqiHealthAdvice" class="text-xs text-slate-600 dark:text-slate-300 bg-slate-100/50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-200/30 dark:border-slate-800/30 mb-4">
+        Fetching live environmental air quality parameters...
+      </p>
+
+      <div class="grid grid-cols-4 gap-2 text-center text-xs">
+        <div class="bg-slate-100/80 dark:bg-slate-900/60 p-2 rounded-xl">
+          <p class="text-slate-400 font-medium">PM2.5</p>
+          <p class="font-bold mt-0.5" id="valPm25">--</p>
+        </div>
+        <div class="bg-slate-100/80 dark:bg-slate-900/60 p-2 rounded-xl">
+          <p class="text-slate-400 font-medium">PM10</p>
+          <p class="font-bold mt-0.5" id="valPm10">--</p>
+        </div>
+        <div class="bg-slate-100/80 dark:bg-slate-900/60 p-2 rounded-xl">
+          <p class="text-slate-400 font-medium">SO2</p>
+          <p class="font-bold mt-0.5" id="valSo2">--</p>
+        </div>
+        <div class="bg-slate-100/80 dark:bg-slate-900/60 p-2 rounded-xl">
+          <p class="text-slate-400 font-medium">NO2</p>
+          <p class="font-bold mt-0.5" id="valNo2">--</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7-Day Forecast Section -->
+    <section id="forecastSection" class="glass rounded-3xl p-5 shadow-lg transition-all duration-300">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-sm tracking-wide text-slate-700 dark:text-slate-200" id="txtForecastTitle">7-DAY FORECAST</h2>
+        <span class="text-xs text-slate-400" id="txtSwipeHint">Swipe horizontal →</span>
+      </div>
+
+      <div id="forecastContainer" class="flex space-x-3 overflow-x-auto hide-scrollbar pb-2">
+        <div class="text-xs text-slate-400 p-4">Loading daily forecast data...</div>
+      </div>
+    </section>
+
+    <!-- Live Voice Feedback Display -->
+    <div id="voiceFeedbackContainer" class="hidden glass rounded-2xl p-3 border-l-4 border-green-500 text-xs flex items-center space-x-3">
+      <i class="fa-solid fa-microphone text-green-500 animate-pulse text-base"></i>
+      <div>
+        <p class="text-slate-400 font-medium" id="txtListeningLabel">Voice Assistant Active</p>
+        <p class="font-semibold italic text-slate-800 dark:text-slate-200" id="voiceTranscript">Listening for commands...</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Help & Commands Modal Menu -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="glass max-w-sm w-full rounded-3xl p-6 shadow-2xl relative space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+        <h3 class="font-bold text-base flex items-center"><i class="fa-solid fa-circle-info text-green-500 mr-2"></i> How to Use EcoClimate</h3>
+        <button onclick="toggleModal('helpModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="text-xs space-y-2 text-slate-600 dark:text-slate-300">
+        <p><strong>🔍 Search:</strong> Type any city name in the top search bar and click search.</p>
+        <p><strong>📍 GPS Location:</strong> Click the target icon next to search to locate yourself automatically.</p>
+        <p><strong>🎙️ Voice Commands:</strong> Tap the green mic button and speak:</p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-500 dark:text-slate-400">
+          <li><em>"Spanish"</em> or <em>"Hindi"</em> (changes language)</li>
+          <li><em>"Air Quality"</em> (scrolls to AQI section)</li>
+          <li><em>"Forecast"</em> (scrolls to forecast section)</li>
+          <li><em>"Dark Mode"</em> (toggles theme)</li>
+        </ul>
+      </div>
+      <button onclick="toggleModal('helpModal')" class="w-full bg-green-500 text-white text-xs font-bold py-2.5 rounded-xl">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Floating Microphone Button -->
+  <div class="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-center pointer-events-none">
+    <button id="micBtn" onclick="toggleVoiceControl()" class="pointer-events-auto bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-xl shadow-green-500/30 flex items-center justify-center transition-all duration-300 transform active:scale-90">
+      <i id="micIcon" class="fa-solid fa-microphone text-2xl"></i>
+    </button>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    let currentLang = localStorage.getItem('ecoclimate_lang') || 'en';
+    let currentUnit = 'C';
+    let isListening = false;
+    let recognition = null;
+    let liveWeatherData = null;
+
+    const weatherCodeMap = {
+      0: "sunny", 1: "partly_cloudy", 2: "partly_cloudy", 3: "cloudy",
+      45: "cloudy", 48: "cloudy", 51: "rainy", 53: "rainy", 55: "rainy",
+      61: "rainy", 63: "rainy", 65: "rainy", 80: "rainy", 81: "rainy", 82: "rainy",
+      95: "stormy", 96: "stormy", 99: "stormy"
+    };
+
+    const i18n = {
+      en: {
+        liveStatus: "Live Status", humidity: "Humidity", wind: "Wind",
+        aqiTitle: "AIR QUALITY INDEX (AQI)", aqiScale: "/ 500 US AQI",
+        forecastTitle: "7-DAY FORECAST", swipeHint: "Swipe horizontal →",
+        listeningLabel: "Voice Assistant Active", listeningMsg: "Listening for commands...",
+        good: "Good", moderate: "Moderate", unhealthy: "Unhealthy", hazardous: "Hazardous",
+        adviceGood: "Air quality is satisfactory and poses little risk. Enjoy outdoor activities!",
+        adviceModerate: "Air quality is acceptable. Sensitive individuals should limit prolonged exertion.",
+        adviceUnhealthy: "Unhealthy air quality. Masks are recommended outdoors.",
+        adviceHazardous: "Emergency warning. Avoid all outdoor physical activities.",
+        partly_cloudy: "Partly Cloudy", sunny: "Sunny", cloudy: "Cloudy", rainy: "Rainy", stormy: "Stormy"
+      },
+      es: {
+        liveStatus: "Estado en Vivo", humidity: "Humedad", wind: "Viento",
+        aqiTitle: "ÍNDICE DE CALIDAD DEL AIRE (AQI)", aqiScale: "/ 500 AQI EE.UU.",
+        forecastTitle: "PRONÓSTICO DE 7 DÍAS", swipeHint: "Deslizar horizontal →",
+        listeningLabel: "Asistente de Voz Activo", listeningMsg: "Escuchando comandos...",
+        good: "Bueno", moderate: "Moderado", unhealthy: "No Saludable", hazardous: "Peligroso",
+        adviceGood: "La calidad del aire es buena. ¡Disfrute al aire libre!",
+        adviceModerate: "Calidad del aire aceptable. Evite esfuerzos prolongados si es sensible.",
+        adviceUnhealthy: "Calidad no saludable. Use mascarilla al salir.",
+        adviceHazardous: "Alerta de emergencia. Evite actividades al aire libre.",
+        partly_cloudy: "Parcialmente Nublado", sunny: "Soleado", cloudy: "Nublado", rainy: "Lluvioso", stormy: "Tormentoso"
+      },
+      fr: {
+        liveStatus: "En Direct", humidity: "Humidité", wind: "Vent",
+        aqiTitle: "INDICE DE QUALITÉ DE L'AIR (AQI)", aqiScale: "/ 500 US AQI",
+        forecastTitle: "PRÉVISIONS SUR 7 JOURS", swipeHint: "Balayer horizontalement →",
+        listeningLabel: "Assistant Vocal Actif", listeningMsg: "Écoute de vos commandes...",
+        good: "Bon", moderate: "Modéré", unhealthy: "Malsain", hazardous: "Dangereux",
+        adviceGood: "La qualité de l'air est satisfaisante. Profitez de vos activités dehors !",
+        adviceModerate: "Qualité de l'air acceptable. Modérez vos efforts si sensible.",
+        adviceUnhealthy: "Qualité malsaine. Port du masque conseillé.",
+        adviceHazardous: "Alerte d'urgence. Évitez toute sortie.",
+        partly_cloudy: "Partiellement Nuageux", sunny: "Ensoleillé", cloudy: "Nuageux", rainy: "Pluvieux", stormy: "Orageux"
+      },
+      hi: {
+        liveStatus: "लाइव स्थिति", humidity: "आर्द्रता", wind: "हवा",
+        aqiTitle: "वायु गुणवत्ता सूचकांक (AQI)", aqiScale: "/ 500 US AQI",
+        forecastTitle: "7-दिवसीय पूर्वानुमान", swipeHint: "स्वाइप करें →",
+        listeningLabel: "वॉयस असिस्टेंट सक्रिय", listeningMsg: "आदेश सुने जा रहे हैं...",
+        good: "अच्छा", moderate: "मध्यम", unhealthy: "अस्वास्थ्यकर", hazardous: "खतरनाक",
+        adviceGood: "वायु गुणवत्ता अच्छी है। बाहर की गतिविधियों का आनंद लें!",
+        adviceModerate: "वायु गुणवत्ता स्वीकार्य है। संवेदनशील लोग बाहर कम समय बिताएं।",
+        adviceUnhealthy: "अस्वास्थ्यकर हवा। बाहर जाते समय मास्क पहनें।",
+        adviceHazardous: "आपतकालीन स्वास्थ्य चेतावनी। बाहर न निकलें।",
+        partly_cloudy: "आंशिक रूप से बादल", sunny: "धूप", cloudy: "बादल", rainy: "बारिश", stormy: "तूफानी"
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('langSelect').value = currentLang;
+      initSpeechRecognition();
+      getGPSLocation(); // Fetch initial GPS location
+    });
+
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') searchCity();
+    }
+
+    async function searchCity() {
+      const query = document.getElementById('citySearchInput').value.trim();
+      if (!query) return;
+
+      document.getElementById('locationTitle').innerText = "Searching...";
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+        const geoData = await geoRes.json();
+
+        if (geoData.results && geoData.results.length > 0) {
+          const place = geoData.results[0];
+          const cityName = `${place.name}${place.admin1 ? ', ' + place.admin1 : ''} (${place.country_code.toUpperCase()})`;
+          fetchFullWeatherData(place.latitude, place.longitude, cityName);
+        } else {
+          document.getElementById('locationTitle').innerText = "City Not Found";
+          alert("City not found. Please try another name.");
+        }
+      } catch (err) {
+        console.error("Geocoding error:", err);
+        document.getElementById('locationTitle').innerText = "Search Error";
+      }
+    }
+
+    function getGPSLocation() {
+      document.getElementById('locationTitle').innerText = "Locating GPS...";
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            fetch
